@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Antigravity Cloud Studio</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --surface-subtle: #f1f5f9;
+      --border: #e2e8f0;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --accent-soft: #eff6ff;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --danger-soft: rgba(239, 68, 68, 0.1);
+      --radius: 14px;
+      --shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.06);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0b0f19;
+        --surface: #111827;
+        --surface-subtle: #1e293b;
+        --border: #1f2937;
+        --text: #f8fafc;
+        --text-muted: #94a3b8;
+        --accent: #3b82f6;
+        --accent-hover: #2563eb;
+        --accent-soft: rgba(59, 130, 246, 0.12);
+        --danger-soft: rgba(239, 68, 68, 0.16);
+        --shadow: 0 4px 24px -2px rgba(0, 0, 0, 0.4);
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Top Navigation Bar */
+    header {
+      height: 60px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      flex-shrink: 0;
+      z-index: 20;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+      font-size: 15px;
+      letter-spacing: -0.01em;
+    }
+
+    .brand-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #2563eb, #4f46e5);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-muted);
+      background: var(--surface-subtle);
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--success);
+    }
+    .status-dot.warming { background: var(--warning); animation: pulse 1.2s infinite; }
+    .status-dot.offline { background: var(--danger); }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.35; }
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    select, .btn {
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      background: var(--surface-subtle);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      padding: 7px 12px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      outline: none;
+    }
+
+    select:hover, .btn:hover {
+      border-color: var(--accent);
+    }
+
+    .btn-icon {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-danger {
+      color: var(--danger);
+      border-color: rgba(239, 68, 68, 0.35);
+      background: var(--danger-soft);
+    }
+    .btn-danger:hover {
+      border-color: var(--danger);
+      background: var(--danger);
+      color: #fff;
+    }
+
+    .count-pill {
+      font-size: 11px;
+      padding: 1px 6px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    /* History Slide-over Drawer */
+    .drawer-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.45);
+      backdrop-filter: blur(2px);
+      display: none;
+      z-index: 90;
+    }
+    .drawer-backdrop.open { display: block; }
+
+    .history-drawer {
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      width: 340px;
+      max-width: 90vw;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      box-shadow: 8px 0 30px rgba(0, 0, 0, 0.2);
+      z-index: 95;
+      display: flex;
+      flex-direction: column;
+      transform: translateX(-100%);
+      transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .history-drawer.open { transform: translateX(0); }
+
+    .drawer-header {
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .drawer-header h3 {
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .drawer-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .history-empty {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 13px;
+      padding: 36px 16px;
+      line-height: 1.5;
+    }
+
+    .session-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--surface-subtle);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .session-item:hover {
+      border-color: var(--accent);
+    }
+
+    .session-item.active {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .session-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .session-title {
+      font-size: 13.5px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 3px;
+    }
+
+    .session-meta {
+      font-size: 11px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .session-del-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: all 0.15s;
+    }
+
+    .session-del-btn:hover {
+      color: var(--danger);
+      background: var(--danger-soft);
+      border-color: rgba(239, 68, 68, 0.3);
+    }
+
+    .drawer-footer {
+      padding: 14px 16px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .drawer-status {
+      font-size: 11.5px;
+      color: var(--text-muted);
+      text-align: center;
+      min-height: 16px;
+    }
+
+    /* Main Chat Area */
+    main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .chat-container {
+      width: 100%;
+      max-width: 780px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      padding-bottom: 24px;
+    }
+
+    .empty-state {
+      margin: 12vh auto 0;
+      text-align: center;
+      max-width: 460px;
+      padding: 28px;
+    }
+
+    .empty-state h2 {
+      font-size: 22px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      letter-spacing: -0.02em;
+    }
+
+    .empty-state p {
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin-bottom: 20px;
+    }
+
+    .quick-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+    }
+
+    .chip {
+      font-size: 12.5px;
+      padding: 7px 13px;
+      border-radius: 999px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .chip:hover {
+      color: var(--accent);
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    /* Message Bubbles */
+    .msg {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      animation: fadeIn 0.2s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .msg.user {
+      align-items: flex-end;
+    }
+
+    .msg.assistant {
+      align-items: flex-start;
+    }
+
+    .bubble {
+      max-width: 88%;
+      padding: 13px 16px;
+      border-radius: var(--radius);
+      font-size: 14.5px;
+      line-height: 1.6;
+      word-wrap: break-word;
+    }
+
+    .msg.user .bubble {
+      background: var(--accent);
+      color: #ffffff;
+      border-bottom-right-radius: 4px;
+      white-space: pre-wrap;
+    }
+
+    .msg.assistant .bubble {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      border-bottom-left-radius: 4px;
+      width: 100%;
+    }
+
+    .msg-meta {
+      font-size: 11.5px;
+      color: var(--text-muted);
+      padding: 0 4px;
+      display: flex;
+      gap: 10px;
+    }
+
+    /* Markdown formatting inside assistant bubble */
+    .bubble pre {
+      background: #0f172a;
+      color: #f8fafc;
+      padding: 12px 14px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin: 10px 0;
+      font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+      font-size: 13px;
+      position: relative;
+    }
+
+    .bubble code {
+      font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+      font-size: 0.9em;
+      background: var(--surface-subtle);
+      padding: 2px 5px;
+      border-radius: 4px;
+    }
+
+    .bubble pre code {
+      background: transparent;
+      padding: 0;
+    }
+
+    .bubble p { margin-bottom: 10px; }
+    .bubble p:last-child { margin-bottom: 0; }
+    .bubble ul, .bubble ol { margin: 8px 0 10px 20px; }
+    .bubble li { margin-bottom: 4px; }
+
+    /* Composer Footer */
+    footer {
+      background: var(--bg);
+      padding: 12px 16px 20px;
+      display: flex;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .composer {
+      width: 100%;
+      max-width: 780px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 10px 12px;
+      box-shadow: var(--shadow);
+      display: flex;
+      align-items: flex-end;
+      gap: 10px;
+      transition: border-color 0.15s;
+    }
+
+    .composer:focus-within {
+      border-color: var(--accent);
+    }
+
+    textarea {
+      flex: 1;
+      border: none;
+      background: transparent;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 14.5px;
+      line-height: 1.5;
+      resize: none;
+      max-height: 180px;
+      padding: 4px;
+      outline: none;
+    }
+
+    .send-btn {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background 0.15s, opacity 0.15s;
+    }
+
+    .send-btn:hover { background: var(--accent-hover); }
+    .send-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    /* Passcode / Settings Modal */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.55);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 16px;
+    }
+
+    .modal-backdrop.open { display: flex; }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      width: 100%;
+      max-width: 400px;
+      padding: 24px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+    }
+
+    .modal h3 {
+      font-size: 17px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .modal p {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+      line-height: 1.45;
+    }
+
+    .field {
+      margin-bottom: 14px;
+    }
+
+    .field label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .field input {
+      width: 100%;
+      padding: 9px 12px;
+      border-radius: 9px;
+      border: 1px solid var(--border);
+      background: var(--surface-subtle);
+      color: var(--text);
+      font-size: 14px;
+      outline: none;
+    }
+
+    .field input:focus { border-color: var(--accent); }
+
+    .modal-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-top: 18px;
+    }
+
+    .modal-actions-right {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+    .btn-primary:hover { background: var(--accent-hover); }
+
+    @media (max-width: 640px) {
+      header { padding: 0 12px; }
+      .brand span { display: none; }
+      select { max-width: 135px; text-overflow: ellipsis; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <button class="btn btn-icon" id="historyBtn" title="Manage Chat History &amp; Render Sessions">
+        <span>History</span>
+        <span class="count-pill" id="historyCount">0</span>
+      </button>
+      <div class="brand-icon">A</div>
+      <span>Antigravity Studio</span>
+      <div class="status-badge" id="statusBadge" title="Single-origin Oregon gateway with FIFO queue protection">
+        <span class="status-dot warming" id="statusDot"></span>
+        <span id="statusText">Connecting...</span>
+      </div>
+    </div>
+
+    <div class="controls">
+      <select id="modelSelect" title="Select Model">
+        <optgroup label="Gemini 4 Argon">
+          <option value="gemini-4-argon-high">Gemini 4 Argon (High)</option>
+          <option value="gemini-4-argon-medium">Gemini 4 Argon (Medium)</option>
+          <option value="gemini-4-argon-low">Gemini 4 Argon (Low)</option>
+        </optgroup>
+        <optgroup label="Gemini 3.8 Flash">
+          <option value="gemini-3.8-flash-high">Gemini 3.8 Flash (High)</option>
+          <option value="gemini-3.8-flash-medium">Gemini 3.8 Flash (Medium)</option>
+          <option value="gemini-3.8-flash-low">Gemini 3.8 Flash (Low)</option>
+        </optgroup>
+        <optgroup label="Claude 5.5 &amp; 4.6">
+          <option value="claude-sonnet-5-5-high">Claude Sonnet 5.5 (High)</option>
+          <option value="claude-opus-5-5-high">Claude Opus 5.5 (High)</option>
+          <option value="claude-sonnet-4-6">Claude Sonnet 4.6 (Thinking)</option>
+          <option value="claude-opus-4-6-thinking">Claude Opus 4.6 (Thinking)</option>
+        </optgroup>
+        <optgroup label="Open Weight">
+          <option value="gpt-oss-120b-medium">GPT-OSS 120B (Medium)</option>
+        </optgroup>
+      </select>
+
+      <select id="effortSelect" title="Reasoning Effort">
+        <option value="">Effort: Default</option>
+        <option value="low">Effort: Low</option>
+        <option value="medium">Effort: Medium</option>
+        <option value="high">Effort: High</option>
+        <option value="max">Effort: Max</option>
+      </select>
+
+      <button class="btn btn-icon" id="newChatBtn" title="Start New Conversation">New</button>
+      <button class="btn btn-icon" id="settingsBtn" title="Passcode &amp; Endpoint Settings">Key</button>
+    </div>
+  </header>
+
+  <!-- History & Session Management Drawer -->
+  <div class="drawer-backdrop" id="drawerBackdrop"></div>
+  <aside class="history-drawer" id="historyDrawer">
+    <div class="drawer-header">
+      <h3>Chat History &amp; Sessions</h3>
+      <button class="btn" id="closeDrawerBtn">Close</button>
+    </div>
+    <div class="drawer-list" id="sessionList"></div>
+    <div class="drawer-footer">
+      <div class="drawer-status" id="drawerStatus"></div>
+      <button class="btn btn-danger" id="purgeAllBtn" style="width:100%; justify-content:center;">
+        Purge All History (Local + Render)
+      </button>
+    </div>
+  </aside>
+
+  <main id="mainScroll">
+    <div class="chat-container" id="chatContainer">
+      <div class="empty-state" id="emptyState">
+        <h2>Cloud Model Workspace</h2>
+        <p>Protected by single-origin Oregon routing &amp; sequential FIFO queue shielding so global access stays safe.</p>
+        <div class="quick-chips">
+          <div class="chip" data-prompt="Explain quantum computing in 3 concise bullet points.">Quantum computing in 3 bullets</div>
+          <div class="chip" data-prompt="Write a clean Python function for exponential backoff retry.">Python retry helper</div>
+          <div class="chip" data-prompt="Compare REST vs GraphQL for mobile apps concisely.">REST vs GraphQL</div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="composer">
+      <textarea id="promptInput" rows="1" placeholder="Ask anything... (Enter to send, Shift+Enter for newline)"></textarea>
+      <button class="send-btn" id="sendBtn" title="Send">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="22" y1="2" x2="11" y2="13"></line>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+        </svg>
+      </button>
+    </div>
+  </footer>
+
+  <!-- Passcode & Endpoint Modal -->
+  <div class="modal-backdrop" id="settingsModal">
+    <div class="modal">
+      <h3>Workspace Access</h3>
+      <p>Enter your access passcode to unlock the cloud gateway.</p>
+      <div class="field">
+        <label for="passcodeInput">Access Passcode</label>
+        <input type="password" id="passcodeInput" placeholder="Enter access passcode" autocomplete="off" />
+      </div>
+      <div class="field">
+        <label for="endpointInput">API Gateway Endpoint</label>
+        <input type="url" id="endpointInput" placeholder="https://agy-api.onrender.com" />
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-danger" id="clearKeyBtn" title="Remove saved passcode from browser">Clear Key</button>
+        <div class="modal-actions-right">
+          <button class="btn" id="closeModalBtn">Cancel</button>
+          <button class="btn btn-primary" id="saveSettingsBtn">Save &amp; Connect</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const DEFAULT_ENDPOINT = "https://agy-api.onrender.com";
+    const STORAGE_SESSIONS_KEY = "agy_chat_sessions_v1";
+
+    let apiEndpoint = (localStorage.getItem("agy_endpoint") || DEFAULT_ENDPOINT).replace(/\/+$/, "");
+    let accessPasscode = localStorage.getItem("agy_passcode") || "";
+    let sessions = [];
+    let activeSessionId = null;
+    let isGenerating = false;
+
+    const statusDot = document.getElementById("statusDot");
+    const statusText = document.getElementById("statusText");
+    const modelSelect = document.getElementById("modelSelect");
+    const effortSelect = document.getElementById("effortSelect");
+    const chatContainer = document.getElementById("chatContainer");
+    const emptyState = document.getElementById("emptyState");
+    const promptInput = document.getElementById("promptInput");
+    const sendBtn = document.getElementById("sendBtn");
+    const mainScroll = document.getElementById("mainScroll");
+    const settingsModal = document.getElementById("settingsModal");
+    const passcodeInput = document.getElementById("passcodeInput");
+    const endpointInput = document.getElementById("endpointInput");
+    const historyDrawer = document.getElementById("historyDrawer");
+    const drawerBackdrop = document.getElementById("drawerBackdrop");
+    const sessionList = document.getElementById("sessionList");
+    const historyCount = document.getElementById("historyCount");
+    const drawerStatus = document.getElementById("drawerStatus");
+
+    // Load saved sessions from localStorage
+    function loadSessions() {
+      try {
+        const raw = localStorage.getItem(STORAGE_SESSIONS_KEY);
+        sessions = raw ? JSON.parse(raw) : [];
+        if (!Array.isArray(sessions)) sessions = [];
+      } catch (e) {
+        sessions = [];
+      }
+      updateHistoryUI();
+    }
+
+    function saveSessions() {
+      try {
+        localStorage.setItem(STORAGE_SESSIONS_KEY, JSON.stringify(sessions));
+      } catch (e) {}
+      updateHistoryUI();
+    }
+
+    function getActiveSession() {
+      return sessions.find(s => s.id === activeSessionId) || null;
+    }
+
+    // Restore saved model preference
+    const savedModel = localStorage.getItem("agy_model");
+    if (savedModel && [...modelSelect.options].some(o => o.value === savedModel)) {
+      modelSelect.value = savedModel;
+    }
+    modelSelect.addEventListener("change", () => {
+      localStorage.setItem("agy_model", modelSelect.value);
+    });
+
+    // Auto-resize textarea
+    promptInput.addEventListener("input", () => {
+      promptInput.style.height = "auto";
+      promptInput.style.height = Math.min(promptInput.scrollHeight, 180) + "px";
+    });
+
+    // Quick prompt chips
+    document.querySelectorAll(".chip").forEach(chip => {
+      chip.addEventListener("click", () => {
+        promptInput.value = chip.dataset.prompt;
+        sendMessage();
+      });
+    });
+
+    // History Drawer Controls
+    function openDrawer() {
+      drawerStatus.textContent = "";
+      updateHistoryUI();
+      historyDrawer.classList.add("open");
+      drawerBackdrop.classList.add("open");
+    }
+
+    function closeDrawer() {
+      historyDrawer.classList.remove("open");
+      drawerBackdrop.classList.remove("open");
+    }
+
+    document.getElementById("historyBtn").addEventListener("click", openDrawer);
+    document.getElementById("closeDrawerBtn").addEventListener("click", closeDrawer);
+    drawerBackdrop.addEventListener("click", closeDrawer);
+
+    function formatTime(ts) {
+      try {
+        const d = new Date(ts);
+        return d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) + " " +
+               d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+      } catch (e) {
+        return "";
+      }
+    }
+
+    function updateHistoryUI() {
+      historyCount.textContent = String(sessions.length);
+      sessionList.innerHTML = "";
+      if (sessions.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "history-empty";
+        empty.textContent = "No chat history stored. Conversations you start will appear here and can be deleted locally and from Render.";
+        sessionList.appendChild(empty);
+        return;
+      }
+
+      sessions.forEach(sess => {
+        const item = document.createElement("div");
+        item.className = "session-item" + (sess.id === activeSessionId ? " active" : "");
+
+        const info = document.createElement("div");
+        info.className = "session-info";
+
+        const title = document.createElement("div");
+        title.className = "session-title";
+        title.textContent = sess.title || "Untitled Conversation";
+
+        const meta = document.createElement("div");
+        meta.className = "session-meta";
+        const msgCount = Array.isArray(sess.messages) ? sess.messages.length : 0;
+        const remoteTag = sess.conversationId ? `Render ID: ${sess.conversationId.slice(0, 8)}` : "Local only";
+        meta.textContent = `${formatTime(sess.updatedAt)} · ${msgCount} msgs · ${remoteTag}`;
+
+        info.appendChild(title);
+        info.appendChild(meta);
+
+        const delBtn = document.createElement("button");
+        delBtn.className = "session-del-btn";
+        delBtn.title = "Thoroughly delete session (Local + Render agy)";
+        delBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path></svg>`;
+
+        delBtn.addEventListener("click", async (e) => {
+          e.stopPropagation();
+          await deleteSingleSession(sess.id);
+        });
+
+        item.addEventListener("click", () => {
+          selectSession(sess.id);
+          closeDrawer();
+        });
+
+        item.appendChild(info);
+        item.appendChild(delBtn);
+        sessionList.appendChild(item);
+      });
+    }
+
+    function selectSession(id) {
+      const sess = sessions.find(s => s.id === id);
+      if (!sess) return;
+      activeSessionId = sess.id;
+      chatContainer.innerHTML = "";
+      if (!sess.messages || sess.messages.length === 0) {
+        chatContainer.appendChild(emptyState);
+        emptyState.style.display = "block";
+      } else {
+        emptyState.style.display = "none";
+        sess.messages.forEach(m => {
+          appendMessageDOM(m.role, m.content, m.meta || "");
+        });
+      }
+      updateHistoryUI();
+    }
+
+    function startNewChat() {
+      activeSessionId = null;
+      chatContainer.innerHTML = "";
+      chatContainer.appendChild(emptyState);
+      emptyState.style.display = "block";
+      updateHistoryUI();
+      promptInput.focus();
+    }
+
+    async function deleteRemoteOnRender(payload) {
+      if (!accessPasscode) return { ok: false, skipped: true };
+      try {
+        const res = await fetch(`${apiEndpoint}/v1/sessions/delete`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Access-Key": accessPasscode
+          },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json().catch(() => ({}));
+        return { ok: res.ok, data };
+      } catch (e) {
+        return { ok: false, error: String(e) };
+      }
+    }
+
+    async function deleteSingleSession(id) {
+      const sess = sessions.find(s => s.id === id);
+      if (!sess) return;
+      const remoteConvId = sess.conversationId;
+
+      drawerStatus.textContent = "Removing session from browser & Render...";
+      sessions = sessions.filter(s => s.id !== id);
+      if (activeSessionId === id) {
+        startNewChat();
+      } else {
+        saveSessions();
+      }
+      saveSessions();
+
+      if (remoteConvId) {
+        const res = await deleteRemoteOnRender({ conversation_id: remoteConvId });
+        if (res.ok) {
+          drawerStatus.textContent = `Deleted locally & purged Render session ${remoteConvId.slice(0, 8)}.`;
+        } else if (res.skipped) {
+          drawerStatus.textContent = "Deleted locally (enter Key to also purge Render session).";
+        } else {
+          drawerStatus.textContent = "Deleted locally (Render purge queued/offline).";
+        }
+      } else {
+        drawerStatus.textContent = "Deleted local session.";
+      }
+    }
+
+    document.getElementById("purgeAllBtn").addEventListener("click", async () => {
+      if (!confirm("Thoroughly delete ALL chat history in this browser AND purge all corresponding sessions inside Render's agy container?")) {
+        return;
+      }
+      drawerStatus.textContent = "Purging all local & Render sessions...";
+      sessions = [];
+      localStorage.removeItem(STORAGE_SESSIONS_KEY);
+      startNewChat();
+
+      const res = await deleteRemoteOnRender({ all: true });
+      if (res.ok) {
+        drawerStatus.textContent = "All local & Render agy sessions thoroughly purged.";
+      } else if (res.skipped) {
+        drawerStatus.textContent = "Local history cleared. Enter Key to purge Render storage.";
+      } else {
+        drawerStatus.textContent = "Local history cleared (Render unreachable or waking).";
+      }
+    });
+
+    // Settings Modal
+    function openSettings() {
+      passcodeInput.value = accessPasscode;
+      endpointInput.value = apiEndpoint;
+      settingsModal.classList.add("open");
+      setTimeout(() => passcodeInput.focus(), 50);
+    }
+
+    document.getElementById("settingsBtn").addEventListener("click", openSettings);
+    document.getElementById("closeModalBtn").addEventListener("click", () => {
+      settingsModal.classList.remove("open");
+    });
+
+    document.getElementById("clearKeyBtn").addEventListener("click", () => {
+      accessPasscode = "";
+      passcodeInput.value = "";
+      localStorage.removeItem("agy_passcode");
+    });
+
+    document.getElementById("saveSettingsBtn").addEventListener("click", () => {
+      accessPasscode = passcodeInput.value.trim();
+      apiEndpoint = (endpointInput.value.trim() || DEFAULT_ENDPOINT).replace(/\/+$/, "");
+      if (accessPasscode) {
+        localStorage.setItem("agy_passcode", accessPasscode);
+      } else {
+        localStorage.removeItem("agy_passcode");
+      }
+      localStorage.setItem("agy_endpoint", apiEndpoint);
+      settingsModal.classList.remove("open");
+      checkGatewayHealth();
+    });
+
+    // New conversation button
+    document.getElementById("newChatBtn").addEventListener("click", startNewChat);
+
+    // Lightweight Markdown renderer (safe against XSS)
+    function escapeHtml(str) {
+      return str.replace(/[&<>"']/g, m => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      }[m]));
+    }
+
+    function renderMarkdown(md) {
+      if (!md) return "";
+      let html = escapeHtml(md);
+      html = html.replace(/```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/g, (_, lang, code) => {
+        return `<pre><code>${code.trim()}</code></pre>`;
+      });
+      html = html.replace(/`([^`\n]+)`/g, "<code>$1</code>");
+      html = html.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+      html = html.replace(/^\s*[-*]\s+(.+)$/gm, "<li>$1</li>");
+      html = html.replace(/(<li>[\s\S]*?<\/li>)/g, "<ul>$1</ul>");
+      html = html.replace(/<\/ul>\s*<ul>/g, "");
+      return html.split(/\n{2,}/).map(block => {
+        if (block.startsWith("<pre>") || block.startsWith("<ul>")) return block;
+        return `<p>${block.replace(/\n/g, "<br/>")}</p>`;
+      }).join("");
+    }
+
+    function appendMessageDOM(role, content, metaText = "") {
+      if (emptyState.parentNode === chatContainer) {
+        emptyState.style.display = "none";
+      }
+      const wrapper = document.createElement("div");
+      wrapper.className = `msg ${role}`;
+
+      const bubble = document.createElement("div");
+      bubble.className = "bubble";
+      if (role === "assistant") {
+        bubble.innerHTML = renderMarkdown(content);
+      } else {
+        bubble.textContent = content;
+      }
+      wrapper.appendChild(bubble);
+
+      const meta = document.createElement("div");
+      meta.className = "msg-meta";
+      meta.textContent = metaText;
+      wrapper.appendChild(meta);
+
+      chatContainer.appendChild(wrapper);
+      mainScroll.scrollTop = mainScroll.scrollHeight;
+      return { wrapper, bubble, meta };
+    }
+
+    async function checkGatewayHealth() {
+      statusDot.className = "status-dot warming";
+      statusText.textContent = "Checking gateway...";
+      try {
+        const res = await fetch(`${apiEndpoint}/health`, { method: "GET" });
+        if (res.ok) {
+          const data = await res.json();
+          statusDot.className = "status-dot";
+          if (data.queue_depth && data.queue_depth > 0) {
+            statusText.textContent = `Shield Active · Queue: ${data.queue_depth}`;
+          } else {
+            statusText.textContent = "Oregon Shield · Ready";
+          }
+          return true;
+        }
+      } catch (e) {
+        statusDot.className = "status-dot offline";
+        statusText.textContent = "Gateway Offline / Waking";
+      }
+      return false;
+    }
+
+    async function sendMessage() {
+      const prompt = promptInput.value.trim();
+      if (!prompt || isGenerating) return;
+
+      if (!accessPasscode) {
+        openSettings();
+        return;
+      }
+
+      isGenerating = true;
+      sendBtn.disabled = true;
+      promptInput.value = "";
+      promptInput.style.height = "auto";
+
+      const selectedModel = modelSelect.value;
+      const selectedEffort = effortSelect.value;
+
+      // Ensure active session exists
+      let sess = getActiveSession();
+      if (!sess) {
+        sess = {
+          id: "sess_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7),
+          title: prompt.slice(0, 48),
+          conversationId: null,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          messages: []
+        };
+        sessions.unshift(sess);
+        activeSessionId = sess.id;
+      }
+
+      sess.messages.push({ role: "user", content: prompt, meta: "" });
+      sess.updatedAt = Date.now();
+      saveSessions();
+
+      appendMessageDOM("user", prompt);
+      const pending = appendMessageDOM("assistant", "Waiting in single-origin FIFO queue...", `${selectedModel}`);
+
+      const startTime = performance.now();
+      try {
+        const payload = {
+          prompt,
+          model: selectedModel
+        };
+        if (selectedEffort) payload.effort = selectedEffort;
+        if (sess.conversationId) payload.conversation_id = sess.conversationId;
+
+        const res = await fetch(`${apiEndpoint}/v1/prompt`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Access-Key": accessPasscode
+          },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        const elapsed = ((performance.now() - startTime) / 1000).toFixed(1);
+
+        if (res.status === 401 || res.status === 403) {
+          const errMsg = `**Access Denied:** ${data.error || "Invalid passcode. Click **Key** in the top bar to enter your passcode."}`;
+          pending.bubble.innerHTML = renderMarkdown(errMsg);
+          pending.meta.textContent = "Auth Error";
+          openSettings();
+        } else if (!res.ok || data.error) {
+          const errMsg = `**Error:** ${data.error || "Request failed"}`;
+          pending.bubble.innerHTML = renderMarkdown(errMsg);
+          pending.meta.textContent = `${elapsed}s · Error`;
+        } else {
+          if (data.conversation_id) {
+            sess.conversationId = data.conversation_id;
+          }
+          const reply = data.response || "(Empty response)";
+          pending.bubble.innerHTML = renderMarkdown(reply);
+          const tokens = data.usage && data.usage.total_tokens ? ` · ${data.usage.total_tokens} tokens` : "";
+          const modelLabel = data.model_used || selectedModel;
+          const metaStr = `${elapsed}s · ${modelLabel}${tokens}`;
+          pending.meta.textContent = metaStr;
+
+          sess.messages.push({ role: "assistant", content: reply, meta: metaStr });
+          sess.updatedAt = Date.now();
+          saveSessions();
+        }
+      } catch (err) {
+        pending.bubble.innerHTML = renderMarkdown(`**Network / Cold-Start Timeout:** The Render container may still be waking up. Try sending again in a few seconds.`);
+        pending.meta.textContent = "Connection Error";
+      } finally {
+        isGenerating = false;
+        sendBtn.disabled = false;
+        mainScroll.scrollTop = mainScroll.scrollHeight;
+        checkGatewayHealth();
+      }
+    }
+
+    sendBtn.addEventListener("click", sendMessage);
+    promptInput.addEventListener("keydown", e => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    loadSessions();
+    checkGatewayHealth();
+    setInterval(() => {
+      if (document.visibilityState === "visible" && !isGenerating) {
+        checkGatewayHealth();
+      }
+    }, 600000);
+  </script>
+</body>
+</html>
