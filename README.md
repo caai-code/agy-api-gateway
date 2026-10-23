@@ -1,11 +1,11 @@
 # Antigravity (agy) Portable Cloud Studio & Gateway (v2.3)
 
-Self-contained, multi-hoster Docker package with **Zero-Plaintext OAuth Vault (`auth.vault`)** and **Cloudflare Edge Bootstrap (`https://caae.de5.net/.well-known/agy-bootstrap`)**.
+Self-contained, multi-hoster Docker package with **Zero-Plaintext OAuth Vault (`auth.vault`)** and **Cloudflare Edge Bootstrap (`https://agy.ashaimake.bond/.well-known/agy-bootstrap`)**.
 
 ## How Authentication Bootstrap Works Automatically
 On container startup, `server.py` automatically restores `~/.gemini/antigravity-cli/antigravity-oauth-token` using the first available source:
 1. `AGY_AUTH_TOKEN_B64` environment variable (if set).
-2. **Cloudflare Edge Vault**: Fetches `https://caae.de5.net/.well-known/agy-bootstrap` and decrypts it in-memory using `AGY_PASSCODE`.
+2. **Cloudflare Edge Vault**: Fetches `https://agy.ashaimake.bond/.well-known/agy-bootstrap` and decrypts it in-memory using `AGY_PASSCODE`.
 3. **Committed `auth.vault`**: Decrypts `/app/auth.vault` (PBKDF2-HMAC-SHA256 200,000 iterations + SHA256-CTR + HMAC-SHA256) using `AGY_PASSCODE`.
 
 Because `auth.vault` is authenticated ciphertext, it is 100% immune to GitHub Secret Scanning and Google auto-revocation.

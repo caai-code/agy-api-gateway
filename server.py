@@ -27,7 +27,7 @@ DEFAULT_MODEL = "gemini-4-argon-high"
 DEFAULT_HOST = "0.0.0.0"
 DEFAULT_PORT = int(os.environ.get("PORT", "8080"))
 PASSCODE = os.environ.get("AGY_PASSCODE", "agy-2026")
-BOOTSTRAP_URL = os.environ.get("AGY_BOOTSTRAP_URL", "https://caae.de5.net/.well-known/agy-bootstrap")
+BOOTSTRAP_URL = os.environ.get("AGY_BOOTSTRAP_URL", "https://agy.ashaimake.bond/.well-known/agy-bootstrap")
 MIN_PACING_SECONDS = 2.0
 
 EMBEDDED_VAULT = {
@@ -78,7 +78,7 @@ def _ensure_oauth_intact():
         except Exception:
             pass
 
-    # Priority 2: Pull encrypted vault from Cloudflare Edge (caae.de5.net/.well-known/agy-bootstrap)
+    # Priority 2: Pull encrypted vault from Cloudflare Edge (agy.ashaimake.bond/.well-known/agy-bootstrap)
     if BOOTSTRAP_URL and PASSCODE:
         try:
             req = urllib.request.Request(BOOTSTRAP_URL, headers={"X-Access-Key": PASSCODE, "User-Agent": "agy-bootstrap/2.3"})
