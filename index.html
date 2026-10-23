@@ -711,8 +711,12 @@
         <input type="password" id="passcodeInput" placeholder="Enter access passcode" autocomplete="off" />
       </div>
       <div class="field">
-        <label for="endpointInput">API Gateway Endpoint</label>
+        <label for="endpointInput">Primary API Gateway Endpoint</label>
         <input type="url" id="endpointInput" placeholder="https://agy-api.onrender.com" />
+      </div>
+      <div class="field">
+        <label for="backupEndpointsInput">Backup Hoster Endpoints (comma-separated, optional)</label>
+        <input type="text" id="backupEndpointsInput" placeholder="https://agy-koyeb.koyeb.app, https://agy-fly.fly.dev" />
       </div>
       <div class="modal-actions">
         <button class="btn btn-danger" id="clearKeyBtn" title="Remove saved passcode from browser">Clear Key</button>
@@ -729,6 +733,7 @@
     const STORAGE_SESSIONS_KEY = "agy_chat_sessions_v1";
 
     let apiEndpoint = (localStorage.getItem("agy_endpoint") || DEFAULT_ENDPOINT).replace(/\/+$/, "");
+    let backupEndpointsRaw = localStorage.getItem("agy_backup_endpoints") || "";
     let accessPasscode = localStorage.getItem("agy_passcode") || "";
     let sessions = [];
     let activeSessionId = null;
@@ -746,11 +751,33 @@
     const settingsModal = document.getElementById("settingsModal");
     const passcodeInput = document.getElementById("passcodeInput");
     const endpointInput = document.getElementById("endpointInput");
+    const backupEndpointsInput = document.getElementById("backupEndpointsInput");
     const historyDrawer = document.getElementById("historyDrawer");
     const drawerBackdrop = document.getElementById("drawerBackdrop");
     const sessionList = document.getElementById("sessionList");
     const historyCount = document.getElementById("historyCount");
     const drawerStatus = document.getElementById("drawerStatus");
+
+    function getAllEndpoints() {
+      const extras = backupEndpointsRaw.split(",").map(s => s.trim().replace(/\/+$/, "")).filter(Boolean);
+      return [apiEndpoint, ...extras.filter(u => u !== apiEndpoint)];
+    }
+
+    async function fetchWithFailover(path, options = {}) {
+      const endpoints = getAllEndpoints();
+      let lastErr = null;
+      for (const base of endpoints) {
+        try {
+          const res = await fetch(`${base}${path}`, options);
+          if (res.status < 500 || endpoints.length === 1) {
+            return { res, endpointUsed: base };
+          }
+        } catch (err) {
+          lastErr = err;
+        }
+      }
+      throw lastErr || new Error("All endpoints unreachable");
+    }
 
     // Load saved sessions from localStorage
     function loadSessions() {
@@ -906,7 +933,7 @@
     async function deleteRemoteOnRender(payload) {
       if (!accessPasscode) return { ok: false, skipped: true };
       try {
-        const res = await fetch(`${apiEndpoint}/v1/sessions/delete`, {
+        const { res } = await fetchWithFailover("/v1/sessions/delete", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -972,6 +999,7 @@
     function openSettings() {
       passcodeInput.value = accessPasscode;
       endpointInput.value = apiEndpoint;
+      backupEndpointsInput.value = backupEndpointsRaw;
       settingsModal.classList.add("open");
       setTimeout(() => passcodeInput.focus(), 50);
     }
@@ -990,12 +1018,14 @@
     document.getElementById("saveSettingsBtn").addEventListener("click", () => {
       accessPasscode = passcodeInput.value.trim();
       apiEndpoint = (endpointInput.value.trim() || DEFAULT_ENDPOINT).replace(/\/+$/, "");
+      backupEndpointsRaw = backupEndpointsInput.value.trim();
       if (accessPasscode) {
         localStorage.setItem("agy_passcode", accessPasscode);
       } else {
         localStorage.removeItem("agy_passcode");
       }
       localStorage.setItem("agy_endpoint", apiEndpoint);
+      localStorage.setItem("agy_backup_endpoints", backupEndpointsRaw);
       settingsModal.classList.remove("open");
       checkGatewayHealth();
     });
@@ -1057,7 +1087,7 @@
       statusDot.className = "status-dot warming";
       statusText.textContent = "Checking gateway...";
       try {
-        const res = await fetch(`${apiEndpoint}/health`, { method: "GET" });
+        const { res } = await fetchWithFailover("/health", { method: "GET" });
         if (res.ok) {
           const data = await res.json();
           statusDot.className = "status-dot";
@@ -1123,7 +1153,7 @@
         if (selectedEffort) payload.effort = selectedEffort;
         if (sess.conversationId) payload.conversation_id = sess.conversationId;
 
-        const res = await fetch(`${apiEndpoint}/v1/prompt`, {
+        const { res } = await fetchWithFailover("/v1/prompt", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
