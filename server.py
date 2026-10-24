@@ -261,7 +261,7 @@ def purge_agy_sessions(conv_id=None, purge_all=False):
 
 def _exec_agy_once(prompt, model, effort=None, conversation_id=None, timeout=180):
     _ensure_oauth_intact()
-    cmd = [AGY_BIN, "-p", prompt, "--output-format", "json", "--disable-slash-commands", "--mode", "plan"]
+    cmd = [AGY_BIN, "-p", prompt, "--output-format", "json", "--dangerously-skip-permissions", "--disable-slash-commands"]
     if model:
         cmd.extend(["--model", model])
     if effort:
