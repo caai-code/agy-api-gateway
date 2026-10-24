@@ -712,11 +712,11 @@
       </div>
       <div class="field">
         <label for="endpointInput">Primary API Gateway Endpoint</label>
-        <input type="url" id="endpointInput" placeholder="https://agy-api.onrender.com" />
+        <input type="url" id="endpointInput" placeholder="https://agy.ashaimake.bond" />
       </div>
       <div class="field">
         <label for="backupEndpointsInput">Backup Hoster Endpoints (comma-separated, optional)</label>
-        <input type="text" id="backupEndpointsInput" placeholder="https://agy-koyeb.koyeb.app, https://agy-fly.fly.dev" />
+        <input type="text" id="backupEndpointsInput" placeholder="https://agy-api.onrender.com" />
       </div>
       <div class="modal-actions">
         <button class="btn btn-danger" id="clearKeyBtn" title="Remove saved passcode from browser">Clear Key</button>
@@ -729,10 +729,17 @@
   </div>
 
   <script>
-    const DEFAULT_ENDPOINT = "https://agy-api.onrender.com";
+    const DEFAULT_ENDPOINT = (window.location.origin && window.location.origin.startsWith("http"))
+      ? window.location.origin
+      : "https://agy.ashaimake.bond";
     const STORAGE_SESSIONS_KEY = "agy_chat_sessions_v1";
 
-    let apiEndpoint = (localStorage.getItem("agy_endpoint") || DEFAULT_ENDPOINT).replace(/\/+$/, "");
+    let savedEndpoint = (localStorage.getItem("agy_endpoint") || "").replace(/\/+$/, "");
+    if (!savedEndpoint || savedEndpoint === "https://agy-api.onrender.com") {
+      savedEndpoint = DEFAULT_ENDPOINT;
+      localStorage.setItem("agy_endpoint", savedEndpoint);
+    }
+    let apiEndpoint = savedEndpoint;
     let backupEndpointsRaw = localStorage.getItem("agy_backup_endpoints") || "";
     let accessPasscode = localStorage.getItem("agy_passcode") || "";
     let sessions = [];
