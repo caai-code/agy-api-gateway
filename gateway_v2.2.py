@@ -29,7 +29,8 @@ if len(sys.argv) > 0 and sys.argv[0].endswith("/app/server.py"):
     DEFAULT_PORT = int(os.environ.get("PORT", "8080"))
     PASSCODE = os.environ.get("AGY_PASSCODE", "agy-2026")
     BOOTSTRAP_URL = os.environ.get("AGY_BOOTSTRAP_URL", "https://agy.ashaimake.bond/.well-known/agy-bootstrap")
-    MIN_PACING_SECONDS = 2.0
+    MAX_CONCURRENCY = int(os.environ.get("AGY_MAX_CONCURRENCY", "2"))
+    MIN_START_STAGGER = float(os.environ.get("AGY_START_STAGGER", "0.5"))
 
     EMBEDDED_VAULT = {
       "v": 1,
@@ -158,13 +159,17 @@ if len(sys.argv) > 0 and sys.argv[0].endswith("/app/server.py"):
         {"id": "gpt-oss-120b-medium", "name": "GPT-OSS 120B (Medium)"},
     ]
 
-    _queue_lock = threading.Lock()
-    _last_finish_time = 0.0
+    _call_pool = threading.Semaphore(MAX_CONCURRENCY)
+    _stagger_lock = threading.Lock()
+    _purge_lock = threading.Lock()
+    _state_lock = threading.Lock()
+    _last_start_time = 0.0
     _active_waiting = 0
+    _active_running = 0
 
     def purge_agy_sessions(conv_id=None, purge_all=False):
         removed = []
-        with _queue_lock:
+        with _purge_lock:
             if purge_all:
                 for sub in ["conversations", "brain", "annotations", "presence", "implicit"]:
                     target_dir = os.path.join(AGY_DATA_DIR, sub)
@@ -299,31 +304,41 @@ if len(sys.argv) > 0 and sys.argv[0].endswith("/app/server.py"):
         return {"status": "ERROR", "response": stdout}, proc.returncode, proc.stderr.strip()
 
     def run_agy_shielded(prompt, model=DEFAULT_MODEL, effort=None, conversation_id=None, timeout=180):
-        global _last_finish_time, _active_waiting
+        global _last_start_time, _active_waiting, _active_running
         for bad in ["AGY_AUTH_TOKEN", "/etc/secrets", "antigravity-oauth-token"]:
             if bad.lower() in prompt.lower():
                 return {"status": "ERROR", "response": "", "model_used": model}, 1, "Blocked by security policy"
 
-        with _queue_lock:
+        with _state_lock:
             _active_waiting += 1
         try:
-            with _queue_lock:
-                elapsed = time.time() - _last_finish_time
-                if elapsed < MIN_PACING_SECONDS:
-                    time.sleep(MIN_PACING_SECONDS - elapsed)
-                res, code, err = _exec_agy_once(prompt, model, effort, conversation_id, timeout)
-                used_model = model
-                if code != 0 and "not recognized as a known model" in err and model in FALLBACK_MAP:
-                    fallback_model = FALLBACK_MAP[model]
-                    res, code, err = _exec_agy_once(prompt, fallback_model, effort, conversation_id, timeout)
-                    used_model = f"{fallback_model} (fallback: account on Gemini 3.8 tier)"
-                _last_finish_time = time.time()
-                if isinstance(res, dict):
-                    res["model_used"] = used_model
-                return res, code, err
-        finally:
-            with _queue_lock:
+            with _call_pool:
+                with _state_lock:
+                    _active_waiting = max(0, _active_waiting - 1)
+                    _active_running += 1
+                try:
+                    with _stagger_lock:
+                        elapsed = time.time() - _last_start_time
+                        if elapsed < MIN_START_STAGGER:
+                            time.sleep(MIN_START_STAGGER - elapsed)
+                        _last_start_time = time.time()
+
+                    res, code, err = _exec_agy_once(prompt, model, effort, conversation_id, timeout)
+                    used_model = model
+                    if code != 0 and "not recognized as a known model" in err and model in FALLBACK_MAP:
+                        fallback_model = FALLBACK_MAP[model]
+                        res, code, err = _exec_agy_once(prompt, fallback_model, effort, conversation_id, timeout)
+                        used_model = f"{fallback_model} (fallback: account on Gemini 3.8 tier)"
+                    if isinstance(res, dict):
+                        res["model_used"] = used_model
+                    return res, code, err
+                finally:
+                    with _state_lock:
+                        _active_running = max(0, _active_running - 1)
+        except Exception:
+            with _state_lock:
                 _active_waiting = max(0, _active_waiting - 1)
+            raise
 
     class AgyHandler(BaseHTTPRequestHandler):
         def _send_json(self, status_code, payload):
@@ -378,9 +393,12 @@ if len(sys.argv) > 0 and sys.argv[0].endswith("/app/server.py"):
                 self._send_json(200, {
                     "status": "ok",
                     "service": "agy-cloud-api-gateway",
-                    "version": "2.3.0",
-                    "shield": "oregon-single-origin-fifo",
+                    "version": "2.4.0",
+                    "shield": "oregon-2-call-pool-staggered",
                     "oauth_ready": os.path.isfile(OAUTH_TOKEN_FILE),
+                    "max_concurrency": MAX_CONCURRENCY,
+                    "start_stagger_seconds": MIN_START_STAGGER,
+                    "active_running": _active_running,
                     "queue_depth": _active_waiting,
                     "default_model": DEFAULT_MODEL,
                     "web_app": "/app",
